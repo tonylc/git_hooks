@@ -1,0 +1,40 @@
+#!/bin/bash
+
+#Files (not deleted) in the index
+files=$(git diff-index --name-status --cached HEAD | grep -v ^D | cut -c3-)
+if [ "$files" != "" ]
+then
+  for f in $files
+  do
+    if [[ "$f" =~ [.]png$ ]]
+    then
+      if which pngcrush.sh &> /dev/null
+      then
+        pngcrush.sh $f
+        git add $f
+      else
+        echo "**"
+        echo "*  Warning: Can't find pngcrush.sh, is it installed and on your path?"
+        echo "*  Remember, all PNGs must be crushed before committing!"
+        echo "**"
+      fi
+    fi
+    # Only examine known text files, so we don't load large binary files.
+    if [[ "$f" =~ [.](conf|css|erb|html|js|json|log|properties|rb|ru|txt|xml|yml)$ ]]
+    then
+      # Add a linebreak to the file if it doesn't have one
+      if [ "$(tail -c1 $f)" != '' ]
+      then
+        echo >> $f
+        git add $f
+      fi
+
+      # Remove trailing whitespace if it exists
+      if grep -q "[[:blank:]]$" $f
+      then
+        sed -i "" -e $'s/[ \t]*$//g' $f
+        git add $f
+      fi
+    fi
+  done
+fi
